@@ -8,7 +8,7 @@
     <!-- Marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
     <!-- Lucide icons (IIFE build exposes global `lucide`) -->
-    <script src="https://unpkg.com/lucide@latest/dist/lucide.iife.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="app" id="app">
@@ -69,36 +69,54 @@
         <div class="main-content">
             <!-- Settings Panel -->
             <div class="settings-panel" id="settingsPanel" style="display: none;">
-                <h3 data-i18n="apiKeySettings">API 密钥设置</h3>
-                <div class="settings-group">
-                    <label data-i18n="customApiKey">自定义 API Key</label>
-                    <input type="password" id="customApiKey" placeholder="sk-xxx" oninput="saveApiKey()">
-                    <small data-i18n="apiKeyHint">留空使用默认配置，根据选择的云平台输入对应的 API Key</small>
-                </div>
-
                 <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
-
-                <h3 data-i18n="modelSettings">模型设置</h3>
                 <div class="settings-group">
-                    <label data-i18n="provider">云平台</label>
-                    <select id="provider" onchange="onProviderChange()">
-                        <option value="aliyun">阿里云</option>
-                        <option value="openai">OpenAI</option>
-                        <option value="aliyun_image">阿里云图片</option>
-                    </select>
+                    <label data-i18n="customEndpointUrl">API 终端地址</label>
+                    <input type="url" id="endpointUrl" placeholder="https://api.openai.com/v1" 
+                        oninput="saveEndpointUrl()" required>
+                    <small data-i18n="endpointHint">输入完整的 API 端点地址</small>
+                </div>
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+                <div class="settings-group">
+                    <label data-i18n="customApiKey">API Key</label>
+                    <input type="password" id="customApiKey" placeholder="sk-xxx" 
+                        oninput="saveApiKey()" required>
+                    <small data-i18n="apiKeyHint">输入您的 API Key</small>
+                </div>
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+                <div class="settings-group">
+                    <label data-i18n="modelName">模型名称</label>
+                    <input type="text" id="customModel" placeholder="gpt-3.5-turbo" 
+                        oninput="saveCustomModel()" required>
+                    <small data-i18n="modelHint">输入要使用的模型名称</small>
                 </div>
 
                 <div class="settings-group">
-                    <label data-i18n="model">模型</label>
-                    <select id="model"></select>
+                    <label>图片生成 API 终端</label>
+                    <input type="url" id="imageEndpointUrl" placeholder="https://api.openai.com/v1" 
+                        oninput="saveImageEndpointUrl()">
+                    <small>输入图片生成API的完整端点地址</small>
                 </div>
 
                 <div class="settings-group">
-                    <label data-i18n="imageProvider">图片生成平台</label>
-                    <select id="imageProvider">
-                        <option value="openai">OpenAI (DALL-E 3)</option>
-                        <option value="aliyun_image">通义千问-文生图</option>
-                    </select>
+                    <label>图片生成 API Key</label>
+                    <input type="password" id="imageApiKey" placeholder="sk-xxx" 
+                        oninput="saveImageApiKey()">
+                    <small>输入图片生成API的Key（可选，留空使用聊天API配置）</small>
+                </div>
+
+                <div class="settings-group">
+                    <label>图片生成模型</label>
+                    <input type="text" id="imageModel" placeholder="dall-e-3" 
+                        oninput="saveImageModel()">
+                    <small>输入图片生成模型的名称，如：dall-e-3, wanx-v1</small>
+                </div>
+
+                <div class="settings-group">
+                    <label>图片尺寸</label>
+                    <input type="text" id="imageSize" placeholder="1024x1024" 
+                        oninput="saveImageSize()" required>
+                    <small>1024x1024, 1328x1328</small>
                 </div>
             </div>
 

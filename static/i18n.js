@@ -33,7 +33,9 @@ const translations = {
         apiKeyHint: "留空使用默认配置，根据选择的云平台输入对应的 API Key",
         freeUsage: "免费配额",
         quotaHint: "超出后需输入自己的 API Key",
-        quotaExceeded: "免费配额已用完，请在设置中输入自己的 API Key"
+        quotaExceeded: "免费配额已用完，请在设置中输入自己的 API Key",
+        endpointUrl: "终端 URL",
+        endpointHint: "可选，留空使用默认终端"
     },
     en: {
         title: "Multi-Cloud Chat Platform",
@@ -68,7 +70,9 @@ const translations = {
         apiKeyHint: "Leave empty to use default, enter the API Key for your selected provider",
         freeUsage: "Free Quota",
         quotaHint: "Enter your own API Key after exceeding",
-        quotaExceeded: "Free quota exhausted, please enter your own API Key in settings"
+        quotaExceeded: "Free quota exhausted, please enter your own API Key in settings",
+        endpointUrl: "Endpoint URL",
+        endpointHint: "Optional, leave blank to use default endpoint"
     }
 };
 

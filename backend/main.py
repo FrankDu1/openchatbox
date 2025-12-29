@@ -1,3 +1,4 @@
+from colorlog import exception
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 import json
 from datetime import datetime, date
 from collections import defaultdict
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -102,84 +105,66 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[Message]
-    model: str = "qwen-plus"
-    provider: Literal["aliyun", "openai"] = "aliyun"
+    model: Optional[str] = None  # 改为可选
+    endpoint_url: Optional[str] = None  # 改为可选
     stream: bool = False
     max_tokens: Optional[int] = None
     temperature: Optional[float] = 0.7
-    api_key: Optional[str] = None  # 用户自定义API key
+    api_key: Optional[str] = None  # 改为可选
 
 class ImageRequest(BaseModel):
     prompt: str
-    provider: Literal["aliyun", "openai"] = "openai"
-    size: str = "1024x1024"
+    model: Optional[str] = None  # 改为可选
+    size: Optional[str] = None  # 改为可选
     n: int = 1
-    api_key: Optional[str] = None  # 用户自定义API key
+    api_key: Optional[str] = None  # 改为可选
+    endpoint_url: Optional[str] = None  # 改为可选
 
-# 云平台配置
-PROVIDER_CONFIGS = {
-    "aliyun": {
-        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "chat_endpoint": "/chat/completions",
-        "image_endpoint": "/images/generations",
-        "api_key_env": "DASHSCOPE_API_KEY"
-    },
-    "openai": {
-        "base_url": "https://api.openai.com/v1",
-        "chat_endpoint": "/chat/completions",
-        "image_endpoint": "/images/generations",
-        "api_key_env": "OPENAI_API_KEY"
-    },
-    "aliyun_image": {
-        "base_url": "https://dashscope.aliyuncs.com/api/v1",
-        "image_endpoint": "services/aigc/multimodal-generation/generation",
-        "api_key_env": "DASHSCOPE_API_KEY"
+def get_default_config():
+    """从环境变量获取默认配置"""
+    return {
+        "chat_endpoint": os.getenv("DEFAULT_CHAT_ENDPOINT", "https://api.openai.com/v1"),
+        "chat_model": os.getenv("DEFAULT_CHAT_MODEL", "gpt-3.5-turbo"),
+        "chat_api_key": os.getenv("DEFAULT_CHAT_API_KEY", ""),
+        "image_endpoint": os.getenv("DEFAULT_IMAGE_ENDPOINT", "https://api.openai.com/v1/images/generations"),
+        "image_model": os.getenv("DEFAULT_IMAGE_MODEL", "dall-e-3"),
+        "image_size": os.getenv("DEFAULT_IMAGE_SIZE", "1024x1024"),
+        "image_api_key": os.getenv("DEFAULT_IMAGE_API_KEY", ""),
     }
-}
 
-def get_api_key(provider: str, custom_key: Optional[str] = None):
-    """获取指定云平台的API密钥，优先使用用户自定义的key"""
-    # 如果提供了自定义key，直接使用
-    if custom_key:
-        return custom_key
-    
-    config = PROVIDER_CONFIGS.get(provider)
-    if not config:
-        raise HTTPException(status_code=400, detail=f"Unsupported provider / 不支持的云平台: {provider}")
-    
-    api_key = os.getenv(config["api_key_env"])
-    if not api_key:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"{provider.upper()} API Key not configured / {provider.upper()} API Key 未配置"
-        )
-    return api_key
 
-def make_api_request(provider: str, endpoint: str, data: dict, api_key: str):
+def make_api_request(endpoint: str, data: dict, api_key: str):
     """发送HTTP请求到云平台API；如果 endpoint 是完整 URL 则直接使用，不再盲目拼接"""
     # 如果 endpoint 是完整 URL，直接使用
     if isinstance(endpoint, str) and endpoint.lower().startswith(("http://", "https://")):
         url = endpoint
     else:
-        config = PROVIDER_CONFIGS.get(provider)
-        if not config:
-            raise HTTPException(status_code=400, detail=f"Unsupported provider / 不支持的云平台: {provider}")
-        base = config.get("base_url", "").rstrip("/")
-        ep = str(endpoint).lstrip("/")
-        url = f"{base}/{ep}" if base else ep
+        # 对于自定义 provider，可能需要处理
+        url = endpoint
 
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"  # 直接使用传入的 api_key
+    }
+    
     try:
         resp = requests.post(url, headers=headers, json=data, timeout=60)
     except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"Upstream request failed / 上游请求失败: {str(e)}")
-
+    
     if resp.status_code >= 400:
-        raise HTTPException(status_code=resp.status_code, detail=f"API request failed / API请求失败: {resp.text}")
-
+        # 尝试解析错误信息
+        try:
+            error_data = resp.json()
+            error_msg = error_data.get("error", {}).get("message", resp.text)
+        except:
+            error_msg = resp.text
+        
+        raise HTTPException(
+            status_code=resp.status_code, 
+            detail=f"API request failed / API请求失败: {error_msg[:200]}"
+        )
+    
     try:
         return resp.json()
     except ValueError:
@@ -226,6 +211,8 @@ async def get_models():
 async def chat(request: ChatRequest, req: Request):
     """Chat API / 聊天接口"""
     try:
+
+        defaults = get_default_config()
         # 获取客户端IP
         client_ip = get_client_ip(req)
         has_custom_key = bool(request.api_key)
@@ -238,17 +225,22 @@ async def chat(request: ChatRequest, req: Request):
                 detail=f"Daily free quota exceeded ({usage['used']}/{usage['limit']}). Please provide your own API key. / 每日免费配额已用完 ({usage['used']}/{usage['limit']})，请输入自己的 API Key。"
             )
         
-        config = PROVIDER_CONFIGS[request.provider]
+        endpoint = request.endpoint_url or defaults["chat_endpoint"]
+        api_key = request.api_key or defaults["chat_api_key"]
+        model = request.model or defaults["chat_model"]
+
+        if not endpoint:
+            raise HTTPException(status_code=400, detail="API endpoint URL is required")
         
-        # 获取API key（优先使用用户提供的）
-        api_key = get_api_key(request.provider, request.api_key)
+        if not api_key:
+            raise HTTPException(status_code=400, detail="API key is required")
         
         # 转换消息格式
         messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
         
         # 构建请求参数
         data = {
-            "model": request.model,
+            "model": model,
             "messages": messages,
             "temperature": request.temperature,
         }
@@ -257,10 +249,11 @@ async def chat(request: ChatRequest, req: Request):
             data["max_tokens"] = request.max_tokens
         
         # 调用 API
-        result = make_api_request(request.provider, config["chat_endpoint"], data, api_key)
+        result = make_api_request(endpoint, data, api_key)
         
         # 增加IP使用计数
-        increment_ip_usage(client_ip, has_custom_key)
+        if not has_custom_key:
+            increment_ip_usage(client_ip, False)
         
         return {
             "message": {
@@ -270,32 +263,106 @@ async def chat(request: ChatRequest, req: Request):
             "usage": result.get("usage", {}),
             "model": result.get("model", request.model)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Request failed / 请求失败: {str(e)}")
-
+    
 @app.post("/api/generate-image")
-async def generate_image(request: ImageRequest):
+async def generate_image(request: ImageRequest, req: Request):
     """Image generation API / 生成图片接口"""
     try:
-        config = PROVIDER_CONFIGS[request.provider]
+        client_ip = get_client_ip(req)
+        has_custom_key = bool(request.api_key)
+
+        # 检查IP限制（只有使用默认key时才限制）
+        if not has_custom_key:
+            if not check_ip_limit(client_ip, has_custom_key):
+                usage = get_ip_usage(client_ip)
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Daily free quota exceeded ({usage['used']}/{usage['limit']}). Please provide your own API key. / 每日免费配额已用完 ({usage['used']}/{usage['limit']})，请输入自己的 API Key。"
+                )
+            
+        defaults = get_default_config()
+
+        endpoint = request.endpoint_url or defaults["image_endpoint"]
+        api_key = request.api_key or defaults["image_api_key"]
+        model = request.model or defaults["image_model"]
+        size = request.size or defaults["image_size"]
         
-        # 获取API key（优先使用用户提供的）
-        api_key = get_api_key(request.provider, request.api_key)
+        if not endpoint:
+            raise HTTPException(status_code=400, detail="API endpoint URL is required")
         
-        data = {
-            "model": "dall-e-3" if request.provider == "openai" else "wanx-v1",
-            "prompt": request.prompt,
-            "size": request.size,
-            "n": request.n
+        if not api_key:
+            raise HTTPException(status_code=400, detail="API key is required")
+        
+        print(f"调用阿里云图片生成API: {endpoint}")
+        
+        if request.api_type == "aliyun_multimodal" or "multimodal-generation" in endpoint:
+            data = {
+                "model": request.model,
+                "input": {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "text": request.prompt
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "parameters": {
+                    "size": request.size,
+                    "n": request.n
+                }
+            }
+        else:
+            # 默认OpenAI格式
+            data = {
+                "model": request.model,
+                "prompt": request.prompt,
+                "size": request.size,
+                "n": request.n
+            }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
         }
         
-        result = make_api_request(request.provider, config["image_endpoint"], data, api_key)
+        print(f"请求体: {data}")
         
-        return {
-            "images": [{"url": img["url"]} for img in result["data"]]
-        }
+        resp = requests.post(endpoint, headers=headers, json=data, timeout=60)
+        
+        print(f"响应状态: {resp.status_code}")
+        print(f"响应内容: {resp.text}")
+        
+        if resp.status_code >= 400:
+            raise HTTPException(
+                status_code=resp.status_code,
+                detail=f"API请求失败: {resp.text}"
+            )
+        
+        result = resp.json()
+        
+        # 解析阿里云格式响应
+        images = []
+        if "output" in result and "choices" in result["output"]:
+            for choice in result["output"]["choices"]:
+                if "message" in choice and "content" in choice["message"]:
+                    for content_item in choice["message"]["content"]:
+                        if "image" in content_item:
+                            images.append({"url": content_item["image"]})  # 用"url"字段
+
+        print(f"find image: {images}")  # 添加这行调试
+        return {"images": images}
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image generation failed / 生成图片失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"图片生成失败: {str(e)}")
+    
 
 if __name__ == "__main__":
     import uvicorn

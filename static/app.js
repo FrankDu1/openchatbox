@@ -10,22 +10,32 @@ let dailyFreeLimit = 10;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize Lucide icons
-    lucide.createIcons();
-    
+    // 等待 lucide 加载
+    function waitForLucide(cb) {
+        if (window.lucide && typeof lucide.createIcons === 'function') {
+            cb();
+        } else {
+            setTimeout(() => waitForLucide(cb), 50);
+        }
+    }
+    waitForLucide(() => {
+        lucide.createIcons();
+    });
+
     // Load theme
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');
         document.getElementById('themeIcon').setAttribute('data-lucide', 'sun');
     }
-    lucide.createIcons();
-    
+    waitForLucide(() => {
+        lucide.createIcons();
+    });
+
     // Load app config
     await loadConfig();
     
-    // Load models
-    await loadModels();
+
     
     // Load chat history
     loadChatHistory();
@@ -33,9 +43,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load API key
     loadApiKey();
     
+    loadCustomModel();
+    loadEndpointUrl();
+
     // Update usage quota
     updateUsageQuota();
     
+    // Load image generation settings
+    loadImageEndpointUrl();
+    loadImageApiKey();
+    loadImageModel();
+
+    loadImageSize();
+
     // Initialize marked.js
     marked.setOptions({
         breaks: true,
@@ -66,36 +86,6 @@ async function loadConfig() {
 // Make loadConfig available globally
 window.loadConfig = loadConfig;
 
-// Load models from API
-async function loadModels() {
-    try {
-        const response = await fetch('/api/models');
-        models = await response.json();
-        updateModelSelect();
-    } catch (error) {
-        console.error('Failed to load models:', error);
-        models = {
-            aliyun: [{ id: 'qwen-plus', name: 'Qwen Plus', name_zh: '通义千问 Plus' }],
-            openai: [{ id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }]
-        };
-        updateModelSelect();
-    }
-}
-
-// Update model select based on provider
-function updateModelSelect() {
-    const provider = document.getElementById('provider').value;
-    const modelSelect = document.getElementById('model');
-    modelSelect.innerHTML = '';
-    
-    const providerModels = models[provider] || [];
-    providerModels.forEach(model => {
-        const option = document.createElement('option');
-        option.value = model.id;
-        option.textContent = currentLang === 'zh' && model.name_zh ? model.name_zh : model.name;
-        modelSelect.appendChild(option);
-    });
-}
 
 // Theme toggle
 function toggleTheme() {
@@ -127,9 +117,24 @@ function toggleImageGen() {
     }
 }
 
-// Provider change
-function onProviderChange() {
-    updateModelSelect();
+// Load custom model
+function loadCustomModel() {
+    const customModel = localStorage.getItem('customModel') || 'gpt-3.5-turbo';
+    const modelInput = document.getElementById('customModel');
+    if (modelInput) {
+        modelInput.value = customModel;
+    }
+}
+
+// Save custom model
+function saveCustomModel() {
+    const customModel = document.getElementById('customModel').value.trim();
+    localStorage.setItem('customModel', customModel || 'gpt-3.5-turbo');
+}
+
+// Get custom model
+function getCustomModel() {
+    return localStorage.getItem('customModel') || 'gpt-3.5-turbo';
 }
 
 // New chat
@@ -176,23 +181,25 @@ function saveChatHistory() {
 function updateChatHistoryUI() {
     const listEl = document.getElementById('chatHistoryList');
     if (!listEl) return;
-    
+
     if (chatHistory.length === 0) {
-        listEl.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary); font-size: 0.875rem;">暂无历史记录</div>';
-        return;
+        listEl.innerHTML = '<div class="chat-history-empty">暂无历史记录</div>';
+    } else {
+        listEl.innerHTML = chatHistory.map(chat => `
+            <div class="chat-history-item ${chat.id === currentChatId ? 'active' : ''}" 
+                 onclick="loadChat('${chat.id}')">
+                <span class="chat-history-title">${escapeHtml(chat.title)}</span>
+                <button class="chat-history-delete" onclick="event.stopPropagation(); deleteChat('${chat.id}')">
+                    <i data-lucide="trash-2"></i>
+                </button>
+            </div>
+        `).join('');
     }
-    
-    listEl.innerHTML = chatHistory.map(chat => `
-        <div class="chat-history-item ${chat.id === currentChatId ? 'active' : ''}" 
-             onclick="loadChat('${chat.id}')">
-            <span class="chat-history-title">${escapeHtml(chat.title)}</span>
-            <button class="chat-history-delete" onclick="event.stopPropagation(); deleteChat('${chat.id}')">
-                <i data-lucide="trash-2"></i>
-            </button>
-        </div>
-    `).join('');
-    
-    lucide.createIcons();
+
+    // 只有 lucide 已加载时才调用
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+    }
 }
 
 function saveCurrentChat() {
@@ -261,6 +268,26 @@ function loadApiKey() {
     }
 }
 
+// Load endpoint URL
+function loadEndpointUrl() {
+    const endpointUrl = localStorage.getItem('endpointUrl') || '';
+    const endpointInput = document.getElementById('endpointUrl');
+    if (endpointInput) {
+        endpointInput.value = endpointUrl;
+    }
+}
+
+// Save endpoint URL
+function saveEndpointUrl() {
+    const endpointUrl = document.getElementById('endpointUrl').value.trim();
+    localStorage.setItem('endpointUrl', endpointUrl);
+}
+
+// Get endpoint URL
+function getEndpointUrl() {
+    return localStorage.getItem('endpointUrl') || '';
+}
+
 function saveApiKey() {
     const customKey = document.getElementById('customApiKey').value.trim();
     localStorage.setItem('customApiKey', customKey);
@@ -308,10 +335,18 @@ async function updateUsageQuota() {
 // Send message
 async function sendMessage() {
     const input = document.getElementById('messageInput');
+    if (!input) {
+        console.error('messageInput element not found');
+        return;
+    }
     const message = input.value.trim();
     
     if (!message || isLoading) return;
     
+    const endpointUrl = getEndpointUrl();
+    const customModel = getCustomModel();
+    const customApiKey = getApiKey();
+
     // Add user message
     messages.push({ role: 'user', content: message });
     input.value = '';
@@ -323,27 +358,19 @@ async function sendMessage() {
     showThinking();
     
     try {
-        const provider = document.getElementById('provider').value;
-        const model = document.getElementById('model').value;
         const temperature = 0.7;
         const maxTokens = 2000;
-        
-        // Get user's custom API key if set
-        const customApiKey = getApiKey();
-        
+
         const requestBody = {
             messages,
-            provider,
-            model,
+            model: customModel,
             temperature,
-            max_tokens: maxTokens
+            max_tokens: maxTokens,
+            endpoint_url: endpointUrl,
+            api_key: customApiKey
         };
         
-        // Include custom API key if provided
-        if (customApiKey) {
-            requestBody.api_key = customApiKey;
-        }
-        
+
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -445,20 +472,47 @@ async function generateImage() {
     btn.innerHTML = `<span data-i18n="generating">${t('generating')}</span>`;
     
     try {
-        const imageProvider = document.getElementById('imageProvider').value;
-        const customApiKey = getApiKey();
+        // 获取图片生成配置
+        const endpointUrl = getImageEndpointUrl();
+        const apiKey = getImageApiKey();
+        const model = getImageModel();
+        const size = getImageSize(); 
+        
+        console.log('config:', { endpointUrl, model, size, apiKey: apiKey ? '***' + apiKey.slice(-4) : 'empty' });
+        // 如果没有配置图片生成终端，使用聊天API配置
+        const effectiveEndpoint = endpointUrl || getEndpointUrl();
+        const effectiveApiKey = apiKey || getApiKey();
+        const effectiveModel = model || 'dall-e-3';
+        
+        if (!effectiveEndpoint) {
+            alert('请先配置API终端地址');
+            return;
+        }
+        
+        if (!effectiveApiKey) {
+            alert('请先配置API Key');
+            return;
+        }
+        
+        // 构建完整的图片生成端点
+        let finalEndpoint = effectiveEndpoint;
+        
+        // 如果是OpenAI格式，需要添加图片生成路径
+        if (effectiveEndpoint.includes('api.openai.com') && !effectiveEndpoint.includes('/images/generations')) {
+            finalEndpoint = effectiveEndpoint.replace(/\/$/, '') + '/images/generations';
+        }
         
         const requestBody = {
             prompt,
-            provider: imageProvider,
-            size: '1024x1024',
-            n: 1
+            model: model || 'dall-e-3',
+            size: size || '1024x1024',
+            n: 1,
+            api_key: apiKey,
+            endpoint_url: endpointUrl,
+            api_type: endpointUrl.includes('dashscope') ? 'aliyun_multimodal' : 'openai'
         };
         
-        if (customApiKey) {
-            requestBody.api_key = customApiKey;
-        }
-        
+        console.log('发送的请求体:', requestBody);
         const response = await fetch('/api/generate-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -508,4 +562,81 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+
+function loadImageEndpointUrl() {
+    const imageEndpointUrl = localStorage.getItem('imageEndpointUrl') || '';
+    const endpointInput = document.getElementById('imageEndpointUrl');
+    if (endpointInput) {
+        endpointInput.value = imageEndpointUrl;
+    }
+}
+
+function saveImageEndpointUrl() {
+    const endpointInput = document.getElementById('imageEndpointUrl');
+    if (!endpointInput) return;
+    const endpointUrl = endpointInput.value.trim();
+    localStorage.setItem('imageEndpointUrl', endpointUrl);
+}
+
+function getImageEndpointUrl() {
+    return localStorage.getItem('imageEndpointUrl') || '';
+}
+
+function loadImageApiKey() {
+    const imageApiKey = localStorage.getItem('imageApiKey') || '';
+    const keyInput = document.getElementById('imageApiKey');
+    if (keyInput) {
+        keyInput.value = imageApiKey;
+    }
+}
+
+function saveImageApiKey() {
+    const keyInput = document.getElementById('imageApiKey');
+    if (!keyInput) return;
+    const apiKey = keyInput.value.trim();
+    localStorage.setItem('imageApiKey', apiKey);
+}
+
+function getImageApiKey() {
+    return localStorage.getItem('imageApiKey') || getApiKey(); // 默认使用聊天API Key
+}
+
+function loadImageModel() {
+    const imageModel = localStorage.getItem('imageModel') || 'dall-e-3';
+    const modelInput = document.getElementById('imageModel');
+    if (modelInput) {
+        modelInput.value = imageModel;
+    }
+}
+
+function saveImageModel() {
+    const modelInput = document.getElementById('imageModel');
+    if (!modelInput) return;
+    const model = modelInput.value.trim();
+    localStorage.setItem('imageModel', model || 'dall-e-3');
+}
+
+function getImageModel() {
+    return localStorage.getItem('imageModel') || 'dall-e-3';
+}
+
+function loadImageSize() {
+    const imageSize = localStorage.getItem('imageSize') || '1024x1024';
+    const sizeInput = document.getElementById('imageSize');
+    if (sizeInput) {
+        sizeInput.value = imageSize;
+    }
+}
+
+function saveImageSize() {
+    const sizeInput = document.getElementById('imageSize');
+    if (!sizeInput) return;
+    const size = sizeInput.value.trim();
+    localStorage.setItem('imageSize', size || '1024x1024');
+}
+
+function getImageSize() {
+    return localStorage.getItem('imageSize') || '1024x1024';
 }

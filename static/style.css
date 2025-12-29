@@ -211,6 +211,22 @@ body {
   opacity: 1;
 }
 
+.settings-group input {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.settings-group input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
 .chat-history-delete:hover {
   background: var(--bg-primary);
   color: #f85149;
