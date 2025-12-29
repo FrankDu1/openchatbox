@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多云聊天平台 - Multi-Cloud Chat</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+    <!-- Lucide icons (IIFE build exposes global `lucide`) -->
+    <script src="https://unpkg.com/lucide@latest/dist/lucide.iife.js"></script>
+</head>
+<body>
+    <div class="app" id="app">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="/static/offerupup logo.png" alt="Logo" class="logo-image" style="height: 32px; width: auto;">
+                    <span class="app-name" id="appName">多云聊天平台</span>
+                </div>
+            </div>
+
+            <button class="sidebar-button" onclick="newChat()" id="newChatBtn">
+                <i data-lucide="message-square"></i>
+                <span class="btn-text" data-i18n="newChat">新对话</span>
+            </button>
+
+            <button class="sidebar-button" onclick="toggleImageGen()" id="imageGenBtn">
+                <i data-lucide="image"></i>
+                <span class="btn-text" data-i18n="imageGen">生成图片</span>
+            </button>
+
+            <!-- Chat History -->
+            <div class="chat-history-section">
+                <div class="section-title" data-i18n="chatHistory">聊天历史</div>
+                <div class="chat-history-list" id="chatHistoryList">
+                    <!-- History items will be inserted here -->
+                </div>
+            </div>
+
+            <div class="sidebar-spacer"></div>
+
+            <!-- Usage Quota -->
+            <div class="usage-quota" id="usageQuota" style="display: none;">
+                <div class="quota-text">
+                    <span data-i18n="freeUsage">免费配额</span>: 
+                    <span id="quotaCount">0/10</span>
+                </div>
+                <div class="quota-hint" data-i18n="quotaHint">超出后需输入自己的 API Key</div>
+            </div>
+
+            <button class="sidebar-button" onclick="toggleSettings()" id="settingsBtn">
+                <i data-lucide="settings"></i>
+                <span class="btn-text" data-i18n="settings">设置</span>
+            </button>
+
+            <div class="sidebar-controls">
+                <button class="icon-button" onclick="toggleTheme()" id="themeBtn" title="切换主题">
+                    <i data-lucide="moon" id="themeIcon"></i>
+                </button>
+                <button class="icon-button" onclick="toggleLanguage()" id="langBtn" title="切换语言">
+                    <i data-lucide="globe"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Settings Panel -->
+            <div class="settings-panel" id="settingsPanel" style="display: none;">
+                <h3 data-i18n="apiKeySettings">API 密钥设置</h3>
+                <div class="settings-group">
+                    <label data-i18n="customApiKey">自定义 API Key</label>
+                    <input type="password" id="customApiKey" placeholder="sk-xxx" oninput="saveApiKey()">
+                    <small data-i18n="apiKeyHint">留空使用默认配置，根据选择的云平台输入对应的 API Key</small>
+                </div>
+
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+
+                <h3 data-i18n="modelSettings">模型设置</h3>
+                <div class="settings-group">
+                    <label data-i18n="provider">云平台</label>
+                    <select id="provider" onchange="onProviderChange()">
+                        <option value="aliyun">阿里云</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="aliyun_image">阿里云图片</option>
+                    </select>
+                </div>
+
+                <div class="settings-group">
+                    <label data-i18n="model">模型</label>
+                    <select id="model"></select>
+                </div>
+
+                <div class="settings-group">
+                    <label data-i18n="imageProvider">图片生成平台</label>
+                    <select id="imageProvider">
+                        <option value="openai">OpenAI (DALL-E 3)</option>
+                        <option value="aliyun_image">通义千问-文生图</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area" id="chatArea">
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-icon">
+                        <i data-lucide="sparkles" style="width: 64px; height: 64px;"></i>
+                    </div>
+                    <h1 data-i18n="title">多云聊天平台</h1>
+                    <p data-i18n="subtitle">支持阿里云通义千问和 OpenAI GPT</p>
+                </div>
+            </div>
+
+            <!-- Image Generation Area -->
+            <div class="image-gen-area" id="imageGenArea" style="display: none;">
+                <div class="image-gen-container">
+                    <h2 data-i18n="image">图片生成</h2>
+                    <textarea id="imagePrompt" rows="4" class="image-prompt-input" 
+                              data-i18n-placeholder="imagePromptPlaceholder"></textarea>
+                    <button class="generate-button" onclick="generateImage()" id="generateBtn">
+                        <span data-i18n="generateImage">生成图片</span>
+                    </button>
+                    <div class="image-gallery" id="imageGallery"></div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area" id="inputArea">
+                <div class="input-container">
+                    <textarea id="messageInput" rows="1" 
+                              data-i18n-placeholder="placeholder"
+                              oninput="autoResizeTextarea(this)"
+                              onkeydown="handleKeyDown(event)"></textarea>
+                    <button class="send-button" onclick="sendMessage()" id="sendBtn">
+                        <i data-lucide="send"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/i18n.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
