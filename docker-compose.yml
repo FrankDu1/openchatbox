@@ -1,21 +1,71 @@
 version: '3.8'
 
 services:
+  db:
+    image: mysql:8.0
+    container_name: db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MYSQL_DATABASE=wordpress
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - app-network
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress
+    depends_on:
+      - db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - WORDPRESS_DB_HOST=db:3306
+      - WORDPRESS_DB_USER=admin
+      - WORDPRESS_DB_PASSWORD=Welcome123456
+      - WORDPRESS_DB_NAME=wordpress
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - app-network
+    expose:
+      - "80"
+
   openchatbox:
-    image: ghcr.io/frankdu1/openchatbox:main-a8e9dde
+    build: .
     container_name: openchatbox
     restart: unless-stopped
-    ports:
-      - "8000:8000"
     environment:
       - SCRIPT_NAME=/openchatbox
       - TZ=Asia/Shanghai
-    volumes:
-      - ./.env:/app/.env           # .env 在根目录
-      - ./static:/app/static       # static 目录在根目录
+    expose:
+      - "8000"
     networks:
-      - web-network
+      - app-network
+
+  webserver:
+    image: nginx:latest
+    container_name: webserver
+    depends_on:
+      - wordpress
+      - openchatbox
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "11434:11434"
+    volumes:
+      - wordpress:/var/www/html
+      - ./nginx/nginx-conf:/etc/nginx/conf.d
+      # - ./nginx/ssl:/etc/nginx/certs
+    networks:
+      - app-network
+
+volumes:
+  wordpress:
+  dbdata:
 
 networks:
-  web-network:
+  app-network:
     driver: bridge
