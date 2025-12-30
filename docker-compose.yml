@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   openchatbox:
-    image: ghcr.io/frankdu1/openchatbox:main-d05bcd1
+    image: ghcr.io/frankdu1/openchatbox:main-a8e9dde
     container_name: openchatbox
     restart: unless-stopped
     ports:
@@ -11,8 +11,8 @@ services:
       - SCRIPT_NAME=/openchatbox
       - TZ=Asia/Shanghai
     volumes:
-      - ./backend/.env:/app/.env 
-      - ./static:/app/static  # 修改这里
+      - ./.env:/app/.env           # .env 在根目录
+      - ./static:/app/static       # static 目录在根目录
     networks:
       - web-network
 
