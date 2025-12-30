@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  openchatbox:
+    image: ghcr.io/frankdu1/openchatbox:main-d05bcd1
+    container_name: openchatbox
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - SCRIPT_NAME=/openchatbox
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./backend/.env:/app/.env 
+      - ./static:/app/static  # 修改这里
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    driver: bridge

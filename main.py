@@ -21,7 +21,7 @@ load_dotenv()
 app = FastAPI(title="多云聊天 API")
 
 # Get the parent directory (project root)
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
 # Mount static files
