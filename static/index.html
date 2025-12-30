@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>多云聊天平台 - Multi-Cloud Chat</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="static/style.css">
     <!-- Marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
     <!-- Lucide icons (IIFE build exposes global `lucide`) -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <base id="baseHref" href="/">
 </head>
 <body>
     <div class="app" id="app">
@@ -16,7 +17,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <img src="/static/offerupup logo.png" alt="Logo" class="logo-image" style="height: 32px; width: auto;">
+                    <img src="static/offerupup_logo.png" alt="Logo" class="logo-image" style="height: 32px; width: auto;">
                     <span class="app-name" id="appName">多云聊天平台</span>
                 </div>
             </div>
@@ -159,7 +160,14 @@
         </div>
     </div>
 
-    <script src="/static/i18n.js"></script>
-    <script src="/static/app.js"></script>
+    <script>
+      // 生产环境设置为 "/openchatbox/"，本地开发为 "/"
+      document.getElementById('baseHref').setAttribute(
+        'href',
+        window.location.pathname.startsWith('/openchatbox/') ? '/openchatbox/' : '/'
+      );
+    </script>
+    <script src="static/i18n.js"></script>
+    <script src="static/app.js"></script>
 </body>
 </html>
