@@ -8,6 +8,9 @@ let chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
 let currentChatId = null;
 let dailyFreeLimit = 10;
 
+// 自动适配 SCRIPT_NAME 前缀
+const BASE = window.location.pathname.startsWith('/openchatbox/') ? '/openchatbox' : '';
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     // 等待 lucide 加载
@@ -66,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Load app configuration
 async function loadConfig() {
     try {
-        const response = await fetch('/api/config');
+        const response = await fetch(`${BASE}/api/config`);
         const config = await response.json();
         const appNameElement = document.getElementById('appName');
         if (appNameElement) {
@@ -311,7 +314,7 @@ async function updateUsageQuota() {
         quotaEl.style.display = 'none';
     } else {
         try {
-            const response = await fetch('/api/usage');
+            const response = await fetch(`${BASE}/api/usage`);
             const usage = await response.json();
             
             quotaEl.style.display = 'block';
@@ -371,7 +374,7 @@ async function sendMessage() {
         };
         
 
-        const response = await fetch('/api/chat', {
+        const response = await fetch(`${BASE}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
@@ -513,7 +516,7 @@ async function generateImage() {
         };
         
         console.log('发送的请求体:', requestBody);
-        const response = await fetch('/api/generate-image', {
+        const response = await fetch(`${BASE}/api/generate-image`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
