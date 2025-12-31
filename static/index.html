@@ -10,6 +10,13 @@
     <!-- Lucide icons (IIFE build exposes global `lucide`) -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <base id="baseHref" href="/">
+    <script>
+      // 自动适配 SCRIPT_NAME
+      const match = window.location.pathname.match(/^\/([a-zA-Z0-9_-]+)\//);
+      if (match) {
+        document.getElementById('baseHref').setAttribute('href', `/${match[1]}/`);
+      }
+    </script>
 </head>
 <body>
     <div class="app" id="app">
@@ -160,13 +167,6 @@
         </div>
     </div>
 
-    <script>
-      // 生产环境设置为 "/openchatbox/"，本地开发为 "/"
-      document.getElementById('baseHref').setAttribute(
-        'href',
-        window.location.pathname.startsWith('/openchatbox/') ? '/openchatbox/' : '/'
-      );
-    </script>
     <script src="static/i18n.js"></script>
     <script src="static/app.js"></script>
 </body>
