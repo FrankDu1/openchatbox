@@ -100,31 +100,31 @@
                 </div>
 
                 <div class="settings-group">
-                    <label>图片生成 API 终端</label>
+                    <label data-i18n="imageEndpointUrl">图片生成 API 终端</label>
                     <input type="url" id="imageEndpointUrl" placeholder="https://api.openai.com/v1" 
                         oninput="saveImageEndpointUrl()">
-                    <small>输入图片生成API的完整端点地址</small>
+                    <small data-i18n="imageEndpointHint">输入图片生成API的完整端点地址</small>
                 </div>
 
                 <div class="settings-group">
-                    <label>图片生成 API Key</label>
+                    <label data-i18n="imageApiKey">图片生成 API Key</label>
                     <input type="password" id="imageApiKey" placeholder="sk-xxx" 
                         oninput="saveImageApiKey()">
-                    <small>输入图片生成API的Key（可选，留空使用聊天API配置）</small>
+                    <small data-i18n="imageApiKeyHint">输入图片生成API的Key（可选，留空使用聊天API配置）</small>
                 </div>
 
                 <div class="settings-group">
-                    <label>图片生成模型</label>
+                    <label data-i18n="imageModel">图片生成模型</label>
                     <input type="text" id="imageModel" placeholder="dall-e-3" 
                         oninput="saveImageModel()">
-                    <small>输入图片生成模型的名称，如：dall-e-3, wanx-v1</small>
+                    <small data-i18n="imageModelHint">输入图片生成模型的名称，如：dall-e-3, wanx-v1</small>
                 </div>
 
                 <div class="settings-group">
-                    <label>图片尺寸</label>
+                    <label data-i18n="imageSize">图片尺寸</label>
                     <input type="text" id="imageSize" placeholder="1024x1024" 
                         oninput="saveImageSize()" required>
-                    <small>1024x1024, 1328x1328</small>
+                    <small data-i18n="imageSizeHint">1024x1024, 1328x1328</small>
                 </div>
             </div>
 
