@@ -26,6 +26,7 @@ const translations = {
         darkMode: "深色模式",
         lightMode: "浅色模式",
         chatHistory: "聊天历史",
+        chatHistoryEmpty: "暂无历史记录",
         apiKeySettings: "API 密钥设置",
         modelSettings: "模型设置",
         imageProvider: "图片生成平台",
@@ -63,6 +64,7 @@ const translations = {
         darkMode: "Dark Mode",
         lightMode: "Light Mode",
         chatHistory: "Chat History",
+        chatHistoryEmpty: "No chat history",
         apiKeySettings: "API Key Settings",
         modelSettings: "Model Settings",
         imageProvider: "Image Generation Provider",
@@ -76,7 +78,7 @@ const translations = {
     }
 };
 
-let currentLang = localStorage.getItem('language') || 'zh';
+let currentLang = localStorage.getItem('language') || 'en';
 
 function t(key) {
     return translations[currentLang][key] || key;

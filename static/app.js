@@ -186,7 +186,8 @@ function updateChatHistoryUI() {
     if (!listEl) return;
 
     if (chatHistory.length === 0) {
-        listEl.innerHTML = '<div class="chat-history-empty">暂无历史记录</div>';
+        listEl.innerHTML = '<div class="chat-history-empty" data-i18n="chatHistoryEmpty"></div>';
+        if (typeof updateTranslations === 'function') updateTranslations();
     } else {
         listEl.innerHTML = chatHistory.map(chat => `
             <div class="chat-history-item ${chat.id === currentChatId ? 'active' : ''}" 
