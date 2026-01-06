@@ -122,7 +122,7 @@ function toggleImageGen() {
 
 // Load custom model
 function loadCustomModel() {
-    const customModel = localStorage.getItem('customModel') || 'gpt-3.5-turbo';
+    const customModel = localStorage.getItem('customModel') || '';
     const modelInput = document.getElementById('customModel');
     if (modelInput) {
         modelInput.value = customModel;
@@ -132,12 +132,12 @@ function loadCustomModel() {
 // Save custom model
 function saveCustomModel() {
     const customModel = document.getElementById('customModel').value.trim();
-    localStorage.setItem('customModel', customModel || 'gpt-3.5-turbo');
+    localStorage.setItem('customModel', customModel || '');
 }
 
 // Get custom model
 function getCustomModel() {
-    return localStorage.getItem('customModel') || 'gpt-3.5-turbo';
+    return localStorage.getItem('customModel') || '';
 }
 
 // New chat
@@ -487,15 +487,6 @@ async function generateImage() {
         const effectiveApiKey = apiKey || getApiKey();
         const effectiveModel = model || 'dall-e-3';
         
-        if (!effectiveEndpoint) {
-            alert('请先配置API终端地址');
-            return;
-        }
-        
-        if (!effectiveApiKey) {
-            alert('请先配置API Key');
-            return;
-        }
         
         // 构建完整的图片生成端点
         let finalEndpoint = effectiveEndpoint;
@@ -507,8 +498,8 @@ async function generateImage() {
         
         const requestBody = {
             prompt,
-            model: model || 'dall-e-3',
-            size: size || '1024x1024',
+            model: model || 'qwen-image-plus',
+            size: size || '1024*1024',
             n: 1,
             api_key: apiKey,
             endpoint_url: endpointUrl,
@@ -607,7 +598,7 @@ function getImageApiKey() {
 }
 
 function loadImageModel() {
-    const imageModel = localStorage.getItem('imageModel') || 'dall-e-3';
+    const imageModel = localStorage.getItem('imageModel') || 'qwen-image-plus';
     const modelInput = document.getElementById('imageModel');
     if (modelInput) {
         modelInput.value = imageModel;
@@ -618,15 +609,15 @@ function saveImageModel() {
     const modelInput = document.getElementById('imageModel');
     if (!modelInput) return;
     const model = modelInput.value.trim();
-    localStorage.setItem('imageModel', model || 'dall-e-3');
+    localStorage.setItem('imageModel', model || 'qwen-image-plus');
 }
 
 function getImageModel() {
-    return localStorage.getItem('imageModel') || 'dall-e-3';
+    return localStorage.getItem('imageModel') || 'qwen-image-plus';
 }
 
 function loadImageSize() {
-    const imageSize = localStorage.getItem('imageSize') || '1024x1024';
+    const imageSize = localStorage.getItem('imageSize') || '1024*1024';
     const sizeInput = document.getElementById('imageSize');
     if (sizeInput) {
         sizeInput.value = imageSize;
@@ -637,9 +628,9 @@ function saveImageSize() {
     const sizeInput = document.getElementById('imageSize');
     if (!sizeInput) return;
     const size = sizeInput.value.trim();
-    localStorage.setItem('imageSize', size || '1024x1024');
+    localStorage.setItem('imageSize', size || '1024*1024');
 }
 
 function getImageSize() {
-    return localStorage.getItem('imageSize') || '1024x1024';
+    return localStorage.getItem('imageSize') || '1024*1024';
 }

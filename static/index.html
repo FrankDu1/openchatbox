@@ -94,7 +94,7 @@
                 <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
                 <div class="settings-group">
                     <label data-i18n="modelName">模型名称</label>
-                    <input type="text" id="customModel" placeholder="gpt-3.5-turbo" 
+                    <input type="text" id="customModel" placeholder="qwen-plus" 
                         oninput="saveCustomModel()" required>
                     <small data-i18n="modelHint">输入要使用的模型名称</small>
                 </div>
@@ -115,16 +115,16 @@
 
                 <div class="settings-group">
                     <label>图片生成模型</label>
-                    <input type="text" id="imageModel" placeholder="dall-e-3" 
+                    <input type="text" id="imageModel" placeholder="qwen-image-plus" 
                         oninput="saveImageModel()">
                     <small>输入图片生成模型的名称，如：dall-e-3, wanx-v1</small>
                 </div>
 
                 <div class="settings-group">
                     <label>图片尺寸</label>
-                    <input type="text" id="imageSize" placeholder="1024x1024" 
+                    <input type="text" id="imageSize" placeholder="1024*1024" 
                         oninput="saveImageSize()" required>
-                    <small>1024x1024, 1328x1328</small>
+                    <small>1024*1024, 1328*1328</small>
                 </div>
             </div>
 

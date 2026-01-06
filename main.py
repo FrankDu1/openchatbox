@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.DEBUG)
 # Load environment variables from .env file
 load_dotenv()
 
-app = FastAPI(title="多云聊天 API")
+app = FastAPI(title="OpenChatBox API")
 
 # Get the parent directory (project root)
 BASE_DIR = Path(__file__).resolve().parent
@@ -123,7 +123,7 @@ def get_default_config():
     """从环境变量获取默认配置"""
     return {
         "chat_endpoint": os.getenv("DEFAULT_CHAT_ENDPOINT", "https://api.openai.com/v1"),
-        "chat_model": os.getenv("DEFAULT_CHAT_MODEL", "gpt-3.5-turbo"),
+        "chat_model": os.getenv("DEFAULT_CHAT_MODEL", "qwen-plus"),
         "chat_api_key": os.getenv("DEFAULT_CHAT_API_KEY", ""),
         "image_endpoint": os.getenv("DEFAULT_IMAGE_ENDPOINT", "https://api.openai.com/v1/images/generations"),
         "image_model": os.getenv("DEFAULT_IMAGE_MODEL", "dall-e-3"),
@@ -244,6 +244,8 @@ async def chat(request: ChatRequest, req: Request):
             "temperature": request.temperature,
         }
         
+        print(f"前端传入model: {request.model}, 实际使用model: {model}")
+
         if request.max_tokens:
             data["max_tokens"] = request.max_tokens
         
@@ -271,19 +273,19 @@ async def chat(request: ChatRequest, req: Request):
 async def generate_image(request: ImageRequest, req: Request):
     """Image generation API / 生成图片接口"""
     try:
+        defaults = get_default_config()
+        
+        # 获取客户端IP
         client_ip = get_client_ip(req)
         has_custom_key = bool(request.api_key)
-
-        # 检查IP限制（只有使用默认key时才限制）
-        if not has_custom_key:
-            if not check_ip_limit(client_ip, has_custom_key):
-                usage = get_ip_usage(client_ip)
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"Daily free quota exceeded ({usage['used']}/{usage['limit']}). Please provide your own API key. / 每日免费配额已用完 ({usage['used']}/{usage['limit']})，请输入自己的 API Key。"
-                )
-            
-        defaults = get_default_config()
+        
+        # 检查IP限制
+        if not check_ip_limit(client_ip, has_custom_key):
+            usage = get_ip_usage(client_ip)
+            raise HTTPException(
+                status_code=429,
+                detail=f"Daily free quota exceeded ({usage['used']}/{usage['limit']}). Please provide your own API key. / 每日免费配额已用完 ({usage['used']}/{usage['limit']})，请输入自己的 API Key。"
+            )
 
         endpoint = request.endpoint_url or defaults["image_endpoint"]
         api_key = request.api_key or defaults["image_api_key"]
@@ -298,9 +300,9 @@ async def generate_image(request: ImageRequest, req: Request):
         
         print(f"调用阿里云图片生成API: {endpoint}")
         
-        if request.api_type == "aliyun_multimodal" or "multimodal-generation" in endpoint:
+        if "ali" in endpoint or "multimodal-generation" in endpoint:
             data = {
-                "model": request.model,
+                "model": model,
                 "input": {
                     "messages": [
                         {
@@ -314,16 +316,16 @@ async def generate_image(request: ImageRequest, req: Request):
                     ]
                 },
                 "parameters": {
-                    "size": request.size,
+                    "size": size,
                     "n": request.n
                 }
             }
         else:
             # 默认OpenAI格式
             data = {
-                "model": request.model,
+                "model": model,
                 "prompt": request.prompt,
-                "size": request.size,
+                "size": size,
                 "n": request.n
             }
         
@@ -347,6 +349,10 @@ async def generate_image(request: ImageRequest, req: Request):
         
         result = resp.json()
         
+        # 增加IP使用计数
+        if not has_custom_key:
+            increment_ip_usage(client_ip, False)
+        
         # 解析阿里云格式响应
         images = []
         if "output" in result and "choices" in result["output"]:
@@ -354,11 +360,13 @@ async def generate_image(request: ImageRequest, req: Request):
                 if "message" in choice and "content" in choice["message"]:
                     for content_item in choice["message"]["content"]:
                         if "image" in content_item:
-                            images.append({"url": content_item["image"]})  # 用"url"字段
+                            images.append({"url": content_item["image"]})
 
-        print(f"find image: {images}")  # 添加这行调试
+        print(f"find image: {images}")
         return {"images": images}
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"图片生成失败: {str(e)}")
     
