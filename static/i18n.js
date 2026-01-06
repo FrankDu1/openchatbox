@@ -2,7 +2,7 @@
 const translations = {
     zh: {
         title: "多云聊天平台",
-        subtitle: "多云多终端模型接口",
+        subtitle: "支持阿里云通义千问和 OpenAI GPT",
         placeholder: "输入消息... (Shift + Enter 换行)",
         send: "发送",
         thinking: "思考中...",
@@ -26,7 +26,6 @@ const translations = {
         darkMode: "深色模式",
         lightMode: "浅色模式",
         chatHistory: "聊天历史",
-        chatHistoryEmpty: "暂无历史记录",
         apiKeySettings: "API 密钥设置",
         modelSettings: "模型设置",
         imageProvider: "图片生成平台",
@@ -36,19 +35,11 @@ const translations = {
         quotaHint: "超出后需输入自己的 API Key",
         quotaExceeded: "免费配额已用完，请在设置中输入自己的 API Key",
         endpointUrl: "终端 URL",
-        endpointHint: "可选，留空使用默认终端",
-        imageEndpointUrl: "图片生成 API 终端",
-        imageEndpointHint: "输入图片生成API的完整端点地址",
-        imageApiKey: "图片生成 API Key",
-        imageApiKeyHint: "输入图片生成API的Key（可选，留空使用聊天API配置）",
-        imageModel: "图片生成模型",
-        imageModelHint: "输入图片生成模型的名称，如：dall-e-3, wanx-v1",
-        imageSize: "图片尺寸",
-        imageSizeHint: "1024x1024, 1328x1328"
+        endpointHint: "可选，留空使用默认终端"
     },
     en: {
         title: "Multi-Cloud Chat Platform",
-        subtitle: "Multi-cloud, multi-endpoint model interface",
+        subtitle: "Powered by Alibaba Qwen and OpenAI GPT",
         placeholder: "Type a message... (Shift + Enter for new line)",
         send: "Send",
         thinking: "Thinking...",
@@ -72,7 +63,6 @@ const translations = {
         darkMode: "Dark Mode",
         lightMode: "Light Mode",
         chatHistory: "Chat History",
-        chatHistoryEmpty: "No chat history",
         apiKeySettings: "API Key Settings",
         modelSettings: "Model Settings",
         imageProvider: "Image Generation Provider",
@@ -82,19 +72,11 @@ const translations = {
         quotaHint: "Enter your own API Key after exceeding",
         quotaExceeded: "Free quota exhausted, please enter your own API Key in settings",
         endpointUrl: "Endpoint URL",
-        endpointHint: "Optional, leave blank to use default endpoint",
-        imageEndpointUrl: "Image Generation API Endpoint",
-        imageEndpointHint: "Enter the full endpoint URL for image generation API",
-        imageApiKey: "Image Generation API Key",
-        imageApiKeyHint: "Enter the API Key for image generation (optional, leave blank to use chat API config)",
-        imageModel: "Image Generation Model",
-        imageModelHint: "Enter the model name for image generation, e.g.: dall-e-3, wanx-v1",
-        imageSize: "Image Size",
-        imageSizeHint: "1024x1024, 1328x1328"
+        endpointHint: "Optional, leave blank to use default endpoint"
     }
 };
 
-let currentLang = localStorage.getItem('language') || 'en';
+let currentLang = localStorage.getItem('language') || 'zh';
 
 function t(key) {
     return translations[currentLang][key] || key;
