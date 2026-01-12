@@ -4,6 +4,8 @@
 
 **✨ 纯 Python + 原生 HTML/JS，无需 npm，无需构建！**
 
+![功能演示](openchatbox_demo_gif_git.gif)
+
 ## 功能特性 / Features
 
 - 多云平台支持：阿里云通义千问（Qwen Plus/Turbo/Max/Long）、OpenAI GPT 系列（GPT-4/GPT-3.5）
