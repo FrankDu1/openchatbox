@@ -36,7 +36,8 @@ const translations = {
         quotaHint: "超出后需输入自己的 API Key",
         quotaExceeded: "免费配额已用完，请在设置中输入自己的 API Key",
         endpointUrl: "终端 URL",
-        endpointHint: "可选，留空使用默认终端"
+        endpointHint: "可选，留空使用默认终端",
+        openSourceProject: "开源项目"
     },
     en: {
         title: "Multi-Cloud Chat Platform",
@@ -74,7 +75,8 @@ const translations = {
         quotaHint: "Enter your own API Key after exceeding",
         quotaExceeded: "Free quota exhausted, please enter your own API Key in settings",
         endpointUrl: "Endpoint URL",
-        endpointHint: "Optional, leave blank to use default endpoint"
+        endpointHint: "Optional, leave blank to use default endpoint",
+        openSourceProject: "Open Source"
     }
 };
 
