@@ -119,6 +119,12 @@ class ImageRequest(BaseModel):
     api_key: Optional[str] = None  # 改为可选
     endpoint_url: Optional[str] = None  # 改为可选
 
+
+class AgentRequest(BaseModel):
+    input: dict
+    parameters: Optional[dict] = {}
+    api_key: Optional[str] = None
+
 def get_default_config():
     """从环境变量获取默认配置"""
     return {
@@ -369,6 +375,109 @@ async def generate_image(request: ImageRequest, req: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"图片生成失败: {str(e)}")
+
+
+@app.post("/api/agent-completion")
+async def agent_completion(request: AgentRequest, req: Request):
+    """Proxy endpoint for DashScope agent completion using AGENT_APP_ID and DEFAULT_AGENT_API_KEY"""
+    try:
+        defaults = get_default_config()
+
+        client_ip = get_client_ip(req)
+        has_custom_key = bool(request.api_key)
+
+        # IP limit check
+        if not check_ip_limit(client_ip, has_custom_key):
+            usage = get_ip_usage(client_ip)
+            raise HTTPException(
+                status_code=429,
+                detail=f"Daily free quota exceeded ({usage['used']}/{usage['limit']}). Please provide your own API key. / 每日免费配额已用完 ({usage['used']}/{usage['limit']})，请输入自己的 API Key。"
+            )
+
+        # Use provided api_key or default agent key from env
+        api_key = request.api_key or os.getenv("DEFAULT_AGENT_API_KEY", "")
+        app_id = os.getenv("AGENT_APP_ID", "")
+
+        if not api_key:
+            raise HTTPException(status_code=400, detail="Agent API key is required")
+        if not app_id:
+            raise HTTPException(status_code=400, detail="AGENT_APP_ID is not configured")
+
+        endpoint = f"https://dashscope.aliyuncs.com/api/v1/apps/{app_id}/completion"
+
+        data = {
+            "input": request.input,
+            "parameters": request.parameters or {},
+            "debug": {}
+        }
+
+        # Call the upstream agent endpoint
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+
+        resp = requests.post(endpoint, headers=headers, json=data, timeout=60)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=f"Agent API请求失败: {resp.text}")
+
+        result = resp.json()
+
+        # increase usage
+        if not has_custom_key:
+            increment_ip_usage(client_ip, False)
+
+        # Try to extract assistant text (support multiple DashScope response formats)
+        assistant_text = None
+        try:
+            if isinstance(result, dict):
+                out = result.get("output")
+                # Case 1: top-level 'choices' (OpenAI-like)
+                if "choices" in result and isinstance(result["choices"], list) and len(result["choices"])>0:
+                    choice0 = result["choices"][0]
+                    # common pattern: choice.message.content is string
+                    if isinstance(choice0, dict) and "message" in choice0 and isinstance(choice0["message"], dict):
+                        msg = choice0["message"]
+                        if "content" in msg and isinstance(msg["content"], str):
+                            assistant_text = msg["content"]
+                # Case 2: output is a dict with a direct "text" field
+                if assistant_text is None and isinstance(out, dict) and isinstance(out.get("text"), str):
+                    assistant_text = out.get("text")
+                # Case 3: output contains choices with message.content array
+                if assistant_text is None and isinstance(out, dict) and "choices" in out:
+                    choice = out["choices"][0]
+                    if "message" in choice and "content" in choice["message"]:
+                        contents = choice["message"]["content"]
+                        for item in contents:
+                            if isinstance(item, dict) and "text" in item:
+                                assistant_text = item["text"]
+                                break
+                # Case 4: top-level 'text' field
+                if assistant_text is None and isinstance(result.get("text"), str):
+                    assistant_text = result.get("text")
+        except Exception:
+            assistant_text = None
+
+        if assistant_text is None:
+            # Fallback: try to stringify common readable fields, otherwise return raw JSON
+            # prefer output.text if present
+            try:
+                if isinstance(result, dict):
+                    out = result.get("output")
+                    if isinstance(out, dict) and out.get("text"):
+                        assistant_text = out.get("text")
+            except Exception:
+                assistant_text = None
+
+        if assistant_text is None:
+            return {"message": {"role": "assistant", "content": json.dumps(result, ensure_ascii=False)}, "raw": result}
+
+        return {"message": {"role": "assistant", "content": assistant_text}}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent 请求失败: {str(e)}")
     
 
 if __name__ == "__main__":

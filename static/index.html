@@ -19,7 +19,11 @@
     </script>
 </head>
 <body>
-    <div class="app" id="app">
+        <!-- 移动端汉堡菜单按钮 -->
+        <button class="icon-button mobile-menu-btn" onclick="toggleSidebar()" style="position:fixed;top:10px;left:10px;z-index:1100;display:none;">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="app" id="app">
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
@@ -32,6 +36,11 @@
             <button class="sidebar-button" onclick="newChat()" id="newChatBtn">
                 <i data-lucide="message-square"></i>
                 <span class="btn-text" data-i18n="newChat">新对话</span>
+            </button>
+
+            <button class="sidebar-button" onclick="openTherapist()" id="therapistBtn">
+                <i data-lucide="user"></i>
+                <span class="btn-text">心理医生</span>
             </button>
 
             <button class="sidebar-button" onclick="toggleImageGen()" id="imageGenBtn">
@@ -84,6 +93,9 @@
         <div class="main-content">
             <!-- Settings Panel -->
             <div class="settings-panel" id="settingsPanel" style="display: none;">
+                <button class="settings-close" onclick="toggleSettings()" title="关闭设置">
+                    <i data-lucide="x"></i>
+                </button>
                 <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
                 <div class="settings-group">
                     <label data-i18n="customEndpointUrl">API 终端地址</label>
@@ -174,7 +186,22 @@
         </div>
     </div>
 
-    <script src="static/i18n.js"></script>
-    <script src="static/app.js"></script>
+        <script src="static/i18n.js"></script>
+        <script src="static/app.js"></script>
+        <script>
+            // 移动端显示汉堡菜单按钮
+            document.addEventListener('DOMContentLoaded', function() {
+                if (window.innerWidth <= 768) {
+                    var btn = document.querySelector('.mobile-menu-btn');
+                    if (btn) btn.style.display = 'block';
+                }
+            });
+            // 侧边栏开关
+            function toggleSidebar() {
+                var sidebar = document.querySelector('.sidebar');
+                if (sidebar) sidebar.classList.toggle('open');
+            }
+            window.toggleSidebar = toggleSidebar;
+        </script>
 </body>
 </html>

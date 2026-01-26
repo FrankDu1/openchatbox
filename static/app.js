@@ -6,6 +6,7 @@ let showImageGen = false;
 let showSettings = false;
 let chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
 let currentChatId = null;
+let currentAgent = 'default';
 let dailyFreeLimit = 10;
 
 // 自动适配 SCRIPT_NAME 前缀
@@ -104,6 +105,29 @@ function toggleSettings() {
     const panelDisplay = showSettings ? 'block' : 'none';
     document.getElementById('settingsPanel').style.display = panelDisplay;
     document.getElementById('settingsBtn').classList.toggle('active', showSettings);
+
+    // On small screens, auto-hide the sidebar when opening settings
+    const sidebar = document.querySelector('.sidebar');
+    if (window.innerWidth <= 768 && sidebar) {
+        if (showSettings) {
+            sidebar.classList.remove('open');
+        }
+    }
+
+    // ensure lucide icons are (re)rendered for the close icon
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+    }
+
+    // hide mobile hamburger while settings panel is open to avoid overlap
+    const mobileBtn = document.querySelector('.mobile-menu-btn');
+    if (mobileBtn) {
+        if (showSettings) {
+            mobileBtn.style.display = 'none';
+        } else {
+            mobileBtn.style.display = window.innerWidth <= 768 ? 'block' : 'none';
+        }
+    }
 }
 
 // Image generation toggle
@@ -117,7 +141,12 @@ function toggleImageGen() {
     // Remove newChat highlight when switching to image gen
     if (showImageGen) {
         document.getElementById('newChatBtn').classList.remove('active');
+        // also remove therapist highlight
+        const therapistBtn = document.getElementById('therapistBtn');
+        if (therapistBtn) therapistBtn.classList.remove('active');
     }
+    // hide sidebar on mobile so user sees the image-gen UI
+    hideSidebarIfMobile();
 }
 
 // Load custom model
@@ -144,6 +173,7 @@ function getCustomModel() {
 function newChat() {
     currentChatId = null;
     messages = [];
+    currentAgent = 'default';
     
     // Switch back to chat view if in image generation mode
     if (showImageGen) {
@@ -157,6 +187,9 @@ function newChat() {
     // Highlight new chat button
     document.getElementById('newChatBtn').classList.add('active');
     document.getElementById('imageGenBtn').classList.remove('active');
+    // ensure therapist tab is not active
+    const therapistBtn = document.getElementById('therapistBtn');
+    if (therapistBtn) therapistBtn.classList.remove('active');
     
     document.getElementById('chatArea').innerHTML = `
         <div class="welcome-screen">
@@ -169,6 +202,57 @@ function newChat() {
     `;
     lucide.createIcons();
     updateChatHistoryUI();
+    hideSidebarIfMobile();
+}
+
+// Open Therapist (心理医生) chat view
+function openTherapist() {
+    currentChatId = null;
+    messages = [];
+    currentAgent = 'therapist';
+    // Exit image generation mode if active and show chat UI
+    if (showImageGen) {
+        showImageGen = false;
+        const chatAreaEl = document.getElementById('chatArea');
+        const imageGenAreaEl = document.getElementById('imageGenArea');
+        const inputAreaEl = document.getElementById('inputArea');
+        if (chatAreaEl) chatAreaEl.style.display = 'flex';
+        if (imageGenAreaEl) imageGenAreaEl.style.display = 'none';
+        if (inputAreaEl) inputAreaEl.style.display = 'block';
+        const imageGenBtnEl = document.getElementById('imageGenBtn');
+        if (imageGenBtnEl) imageGenBtnEl.classList.remove('active');
+    }
+
+    // Render a welcome-style therapist intro (same structure as newChat)
+    document.getElementById('chatArea').innerHTML = `
+        <div class="welcome-screen">
+            <div class="welcome-icon">
+                <i data-lucide="user" style="width: 64px; height: 64px;"></i>
+            </div>
+            <h1>心理医生</h1>
+            <p style="max-width:720px;margin:0 auto;color:var(--text-secondary);line-height:1.6;">
+                欢迎来到心理医生对话。我会倾听并提供情绪调节与放松练习建议，帮助你梳理问题并给出可行的下一步方法。
+                如处于紧急危机或有自伤倾向，请立刻联系当地紧急服务或信任的人。本工具不替代专业治疗。
+                可先用一两句话描述你当前最困扰的事。
+            </p>
+        </div>
+    `;
+
+    // Button active states
+    const therapistBtn = document.getElementById('therapistBtn');
+    const newChatBtn = document.getElementById('newChatBtn');
+    const imageGenBtn = document.getElementById('imageGenBtn');
+    if (therapistBtn) therapistBtn.classList.add('active');
+    if (newChatBtn) newChatBtn.classList.remove('active');
+    if (imageGenBtn) imageGenBtn.classList.remove('active');
+
+    // Ensure icons render
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+    }
+
+    updateChatHistoryUI();
+    hideSidebarIfMobile();
 }
 
 // Chat history management
@@ -248,6 +332,15 @@ function loadChat(chatId) {
     messages = [...chat.messages];
     renderMessages();
     updateChatHistoryUI();
+    // set UI active states: this is a loaded chat (regular chat)
+    const newChatBtn = document.getElementById('newChatBtn');
+    const imageGenBtn = document.getElementById('imageGenBtn');
+    const therapistBtn = document.getElementById('therapistBtn');
+    if (newChatBtn) newChatBtn.classList.add('active');
+    if (imageGenBtn) imageGenBtn.classList.remove('active');
+    if (therapistBtn) therapistBtn.classList.remove('active');
+    // hide sidebar on mobile after selecting a saved chat
+    hideSidebarIfMobile();
 }
 
 function deleteChat(chatId) {
@@ -365,23 +458,37 @@ async function sendMessage() {
         const temperature = 0.7;
         const maxTokens = 2000;
 
-        const requestBody = {
-            messages,
-            model: customModel,
-            temperature,
-            max_tokens: maxTokens,
-            endpoint_url: endpointUrl,
-            api_key: customApiKey
-        };
-        
+        let response, data;
+        if (currentAgent === 'therapist') {
+            // Use agent completion proxy on the backend
+            const agentBody = {
+                input: { prompt: message },
+                parameters: {}
+            };
 
-        const response = await fetch(`${BASE}/api/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
-        
-        const data = await response.json();
+            response = await fetch(`${BASE}/api/agent-completion`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(agentBody)
+            });
+            data = await response.json();
+        } else {
+            const requestBody = {
+                messages,
+                model: customModel,
+                temperature,
+                max_tokens: maxTokens,
+                endpoint_url: endpointUrl,
+                api_key: customApiKey
+            };
+
+            response = await fetch(`${BASE}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            data = await response.json();
+        }
         
         if (response.ok) {
             messages.push({
@@ -634,4 +741,14 @@ function saveImageSize() {
 
 function getImageSize() {
     return localStorage.getItem('imageSize') || '1024*1024';
+}
+
+// Hide sidebar on small screens so content is visible after selecting a tab
+function hideSidebarIfMobile() {
+    const sidebar = document.querySelector('.sidebar');
+    const mobileBtn = document.querySelector('.mobile-menu-btn');
+    if (window.innerWidth <= 768) {
+        if (sidebar) sidebar.classList.remove('open');
+        if (mobileBtn) mobileBtn.style.display = 'block';
+    }
 }
